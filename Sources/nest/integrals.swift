@@ -17,7 +17,7 @@ public func integrate<InputType: Numeric, OutputType: Numeric>(
     computeSquare: (OutputType, OutputType) -> OutputType,
     identity: (InputType) -> OutputType
 ) -> OutputType where InputType: Comparable {
-    var isInverseOrderBounds = false
+    var isInverseOrderBounds = false // TODO: is not used
     var leftBoundary = firstValue
     var rightBoundary = lastValue
     if rightBoundary < leftBoundary {
