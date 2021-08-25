@@ -2,6 +2,9 @@
 
 **N**umerical **est**imation tool - a library containing some basic functions for approximate computation of some mathematical values.
 
+![sphere-volume-time-plot](images/sphere-volume-time-plot.png)
+![sphere-volume-error-plot](images/sphere-volume-error-plot.png)
+
 ## Usage
 
 Include into your global `dependencies` section in the `Package.swift` the following statement: 
