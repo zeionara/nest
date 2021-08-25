@@ -1,14 +1,10 @@
 import Foundation
 
-// public func integrate<InputType: Numeric, OutputType: Numeric>(_ getValue: (InputType) -> OutputType, from firstValue: InputType, to lastValue: InputType) -> OutputType {
-//     var isInverseOrderBounds = false
-//     if lastValue > firstValue {
-//         (lastValue, firstValue) = (firstValue, lastValue)
-//         isInverseOrderBounds = true
-//     }
-    
-//     return (lastValue - firstValue) * getValue(firstValue)
-// }
+public enum IntegralKind {
+    case left
+    case right
+    case mean
+}
 
 public func integrate<InputType: Numeric, OutputType: Numeric>(
     _ getValue: (InputType) -> OutputType,
@@ -60,14 +56,20 @@ public func integrate<Type: Numeric>(
 
 public func integrate(
     _ getValue: (Double) -> Double,
-    from firstValue: Double, to lastValue: Double, precision nIntervals: Int = 10
+    from firstValue: Double, to lastValue: Double, precision nIntervals: Int = 10, kind: IntegralKind = .right
 ) -> Double {
     let step = abs(lastValue - firstValue) / Double(nIntervals)
     // print(step)
     return integrate(
         getValue, from: firstValue, to: lastValue, step: step, zero: 0.0
-    ) { leftHeight, rightHeight in
-        return rightHeight * step
-        // return ((leftHeight * step) + (rightHeight * step)) / 2.0
+    ) { (leftHeight: Double, rightHeight: Double) in
+        if kind == .right {
+            return rightHeight * step
+        } else if kind == .left {
+            return leftHeight * step
+        } else {
+            // return Double(rightHeight + leftHeight) * step / 2.0
+            return (leftHeight + rightHeight) / 2.0 * step
+        }
     }
 }

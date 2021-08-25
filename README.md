@@ -35,7 +35,6 @@ print("The integral of the constant function y = 5 from \(String(format: "%.3f",
 // Output: The integral of the constant function y = 5 from 1.000 to 3.000 is equal to 10.000!
 ```
 
-
 ## Building
 
 The following command must be executed for packaging the library contents:
