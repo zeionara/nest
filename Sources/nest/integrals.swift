@@ -88,7 +88,7 @@ public func integrate(
         let result = integrate( getValue,
             from: interval.from,
             to: interval.to,
-            precision: nIntervals / nParts + nParts,
+            precision: nIntervals / nParts + 1,
             kind: kind
         )
         return result
