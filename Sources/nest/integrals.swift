@@ -77,3 +77,22 @@ public func integrate(
 
     return result.isPositive ? result.value : -result.value
 }
+
+public func integrate(
+    _ getValue: @escaping (Double) -> Double,
+    from firstValue: Double, to lastValue: Double, precision nIntervals: Int = 10, kind: IntegralKind = .right, nParts: Int
+) async -> Double {
+    let results = await concurrentMap(
+        splitInterval(from: firstValue, to: lastValue, nParts: nParts)
+    ) { interval -> Double in
+        let result = integrate( getValue,
+            from: interval.from,
+            to: interval.to,
+            precision: nIntervals / nParts + nParts,
+            kind: kind
+        )
+        return result
+    }
+    
+    return results.reduce(0, +)
+}
