@@ -30,25 +30,30 @@ public func random<InputType: Numeric, OutputType: Numeric>(
     var leftHeight: OutputType? = .none
     var rightHeight: OutputType? = .none
     
-    print("base = \(baseValue)")
+    // print("base = \(baseValue)")
+    // print("step = \(step)")
 
     repeat {
+        // print("from \(leftBoundary) to \(nextLeftBoundary) prob is \(totalProbability)")
         leftBoundary = nextLeftBoundary
         leftHeight = leftHeight ?? getProbability(leftBoundary)
         nextLeftBoundary = leftBoundary + step
         rightHeight = getProbability(nextLeftBoundary)
 
         let nextTotalProbability = totalProbability + computeSquare(leftHeight!, rightHeight!)
+        // print("next tp = \(nextTotalProbability)")
         
         if (
             ((generatorKind == .ceil) && (baseValueAsProbability > totalProbability) && (baseValueAsProbability <= nextTotalProbability)) || 
             ((generatorKind == .floor) && (baseValueAsProbability >= totalProbability) && (baseValueAsProbability < nextTotalProbability))
          ) {
-             return generate(leftBoundary, nextLeftBoundary)
+            return generate(leftBoundary, nextLeftBoundary)
         }
         
         totalProbability = nextTotalProbability
     } while leftBoundary <= rightBoundary
+
+    // print("left = \(leftBoundary), right = \(rightBoundary)")
     
     return generatorKind == .floor ? generate(leftBoundary, nextLeftBoundary) : generate(firstValue, firstValue + step) // If wasn't able to generate earlier
 }
