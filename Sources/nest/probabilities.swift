@@ -30,7 +30,7 @@ public func random<InputType: Numeric, OutputType: Numeric>(
     var leftHeight: OutputType? = .none
     var rightHeight: OutputType? = .none
     
-    print("base = \(baseValue)")
+    // print("base = \(baseValue)")
 
     repeat {
         leftBoundary = nextLeftBoundary
