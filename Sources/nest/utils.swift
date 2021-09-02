@@ -51,3 +51,22 @@ public func splitInterval(from firstValue: Double, to lastValue: Double, nParts:
 
     return results
 }
+
+public func concurrentMap<InputType, OutputType>(_ inputs: Array<InputType>, handler: @escaping (InputType) async -> OutputType) async -> Array<OutputType> { // nWorkers: Int? = .none
+    let externallyAvailableResults = SynchronisedCollection<OutputType>()
+
+    await withTaskGroup(of: OutputType.self) { taskGroup in 
+        for input in inputs {
+            taskGroup.addTask {
+                let result = await handler(input)
+                return result
+            }
+        }
+
+        for await result in taskGroup {
+            await externallyAvailableResults.append(result)
+        }
+    }
+
+    return await externallyAvailableResults.items
+}

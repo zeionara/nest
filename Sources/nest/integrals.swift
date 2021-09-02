@@ -9,12 +9,12 @@ public enum IntegralKind {
 public typealias IntegrationResult<ValueType> = (value: ValueType, isPositive: Bool)
 
 public func integrate<InputType: Numeric, OutputType: Numeric>(
-    _ getValue: (InputType) -> OutputType,
+    _ getValue: (InputType) async -> OutputType,
     from firstValue: InputType, to lastValue: InputType,
     step: InputType, zero: OutputType,
     computeSquare: (OutputType, OutputType) -> OutputType,
     identity: (InputType) -> OutputType
-) -> IntegrationResult<OutputType> where InputType: Comparable {
+) async -> IntegrationResult<OutputType> where InputType: Comparable {
     var isInverseOrderBounds = false // TODO: is not used
     var leftBoundary = firstValue
     var rightBoundary = lastValue
@@ -31,9 +31,14 @@ public func integrate<InputType: Numeric, OutputType: Numeric>(
     var leftHeight: OutputType? = .none
     var rightHeight: OutputType? = .none
     repeat {
-        leftHeight = leftHeight ?? getValue(leftBoundary)
+        if let rightHeightUnwrapped = rightHeight {
+            leftHeight = rightHeight
+        } else {
+            leftHeight = await getValue(leftBoundary)    
+        }
+        // leftHeight = rightHeight ?? getValue(leftBoundary)
         leftBoundary += step
-        rightHeight = getValue(leftBoundary)
+        rightHeight = await getValue(leftBoundary)
 
         result += computeSquare(leftHeight!, rightHeight!)
 
@@ -46,10 +51,10 @@ public func integrate<InputType: Numeric, OutputType: Numeric>(
 }
 
 public func integrate<Type: Numeric>(
-    _ getValue: (Type) -> Type,
+    _ getValue: (Type) async -> Type,
     from firstValue: Type, to lastValue: Type, step: Type, zero: Type, computeSquare: (Type, Type) -> Type
-) -> IntegrationResult<Type> where Type: Comparable {
-    return integrate(
+) async -> IntegrationResult<Type> where Type: Comparable {
+    return await integrate(
         getValue, from: firstValue, to: lastValue, step: step, zero: zero, computeSquare: computeSquare
     ) {
         $0
@@ -57,12 +62,12 @@ public func integrate<Type: Numeric>(
 }
 
 public func integrate(
-    _ getValue: (Double) -> Double,
+    _ getValue: (Double) async -> Double,
     from firstValue: Double, to lastValue: Double, precision nIntervals: Int = 10, kind: IntegralKind = .right
-) -> Double {
+) async -> Double {
     let step = abs(lastValue - firstValue) / Double(nIntervals)
     
-    let result = integrate(
+    let result = await integrate(
         getValue, from: firstValue, to: lastValue, step: step, zero: 0.0
     ) { (leftHeight: Double, rightHeight: Double) in
         if kind == .right {
@@ -79,13 +84,13 @@ public func integrate(
 }
 
 public func integrate(
-    _ getValue: @escaping (Double) -> Double,
+    _ getValue: @escaping (Double) async -> Double,
     from firstValue: Double, to lastValue: Double, precision nIntervals: Int = 10, kind: IntegralKind = .right, nParts: Int
 ) async -> Double {
     let results = await concurrentMap(
         splitInterval(from: firstValue, to: lastValue, nParts: nParts)
-    ) { interval -> Double in
-        let result = integrate( getValue,
+    ) { interval async -> Double in
+        let result = await integrate( getValue,
             from: interval.from,
             to: interval.to,
             precision: nIntervals / nParts + 1,
@@ -100,13 +105,13 @@ public func integrate(
 public func integrate(
     _ getValue: ([Double]) -> Double,
     from firstValue: [Double], to lastValue: [Double], precision nIntervals: Int = 10, kind: IntegralKind = .right
-) -> Double {
+) async -> Double {
     if firstValue.count == 1 {
         func getValueFixed(_ x: Double) -> Double {
             return getValue([x])
         }
         
-        return integrate(
+        return await integrate(
             getValueFixed,
             from: firstValue.first!,
             to: lastValue.first!,
@@ -115,12 +120,12 @@ public func integrate(
         )
     }
 
-    func getValueFixed(_ firstDimensionValue: Double) -> Double {
+    func getValueFixed(_ firstDimensionValue: Double) async -> Double {
         func getValueOnShortenedArray(_ lastDimensionValues: [Double]) -> Double {
             return getValue([firstDimensionValue] + lastDimensionValues)
         }
         
-        return integrate(
+        return await integrate(
             getValueOnShortenedArray,
             from: Array(firstValue.dropFirst()),
             to: Array(lastValue.dropFirst()),
@@ -129,13 +134,55 @@ public func integrate(
         )
     }
     
-    return integrate(
+    return await integrate(
         getValueFixed,
         from: firstValue.first!,
         to: lastValue.first!,
         precision: nIntervals,
         kind: kind
     )
+}
 
-    // return result.isPositive ? result.value : -result.value
+public func integrate(
+    _ getValue: @escaping ([Double]) -> Double,
+    from firstValue: [Double], to lastValue: [Double], precision nIntervals: Int = 10, kind: IntegralKind = .right, nParts: Int
+) async -> Double {
+    if firstValue.count == 1 {
+        func getValueFixed(_ x: Double) -> Double {
+            return getValue([x])
+        }
+        
+        return await integrate(
+            getValueFixed,
+            from: firstValue.first!,
+            to: lastValue.first!,
+            precision: nIntervals,
+            kind: kind,
+            nParts: nParts
+        )
+    }
+
+    func getValueFixed(_ firstDimensionValue: Double) async -> Double {
+        func getValueOnShortenedArray(_ lastDimensionValues: [Double]) -> Double {
+            return getValue([firstDimensionValue] + lastDimensionValues)
+        }
+        
+        return await integrate(
+            getValueOnShortenedArray,
+            from: Array(firstValue.dropFirst()),
+            to: Array(lastValue.dropFirst()),
+            precision: nIntervals,
+            kind: kind,
+            nParts: nParts
+        )
+    }
+    
+    return await integrate(
+        getValueFixed,
+        from: firstValue.first!,
+        to: lastValue.first!,
+        precision: nIntervals,
+        kind: kind,
+        nParts: nParts
+    )
 }
