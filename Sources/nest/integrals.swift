@@ -96,3 +96,46 @@ public func integrate(
     
     return results.reduce(0, +)
 }
+
+public func integrate(
+    _ getValue: ([Double]) -> Double,
+    from firstValue: [Double], to lastValue: [Double], precision nIntervals: Int = 10, kind: IntegralKind = .right
+) -> Double {
+    if firstValue.count == 1 {
+        func getValueFixed(_ x: Double) -> Double {
+            return getValue([x])
+        }
+        
+        return integrate(
+            getValueFixed,
+            from: firstValue.first!,
+            to: lastValue.first!,
+            precision: nIntervals,
+            kind: kind
+        )
+    }
+
+    func getValueFixed(_ firstDimensionValue: Double) -> Double {
+        func getValueOnShortenedArray(_ lastDimensionValues: [Double]) -> Double {
+            return getValue([firstDimensionValue] + lastDimensionValues)
+        }
+        
+        return integrate(
+            getValueOnShortenedArray,
+            from: Array(firstValue.dropFirst()),
+            to: Array(lastValue.dropFirst()),
+            precision: nIntervals,
+            kind: kind
+        )
+    }
+    
+    return integrate(
+        getValueFixed,
+        from: firstValue.first!,
+        to: lastValue.first!,
+        precision: nIntervals,
+        kind: kind
+    )
+
+    // return result.isPositive ? result.value : -result.value
+}

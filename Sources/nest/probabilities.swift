@@ -76,6 +76,18 @@ public func random_<Type: Numeric>(
     }
 }
 
+public func getSteps(from firstValue: [Double], to lastValue: [Double], precision nIntervals: Int) -> [Double] {
+    var steps = [Double]()
+    
+    for i in 0..<firstValue.count {
+        steps.append(
+            abs(lastValue[i] - firstValue[i]) / Double(nIntervals)
+        )
+    }
+
+    return steps
+}
+
 public extension Double {
     static func random(
         _ getValue: (Double) -> Double,
@@ -106,6 +118,44 @@ public extension Double {
 
         return result
     }
+
+//     static func random(
+//         _ getValue: ([Double]) -> Double,
+//         from firstValue: [Double],
+//         to lastValue: [Double],
+//         precision nIntervals: Int = 10,
+//         kind: IntegralKind = .right,
+//         generatorKind: GeneratorKind = .ceil
+//     ) -> [Double] {
+//         // let step = abs(lastValue - firstValue) / Double(nIntervals)
+//         let step = getSteps(from: firstValue, to: lastValue, precision: nIntervals)
+
+//         func getValue() {
+//             integrate(
+//                 _ getValue: @escaping (Double) -> Double,
+//                 from firstValue: Double, to lastValue: Double, precision nIntervals: Int = 10, kind: IntegralKind = .right, nParts: Int
+//             )
+//         }
+        
+//         let result = random_(
+//             getValue, from: firstValue, to: lastValue, step: step, zero: 0.0,
+//             base: generatorKind == .ceil ? Double.random(in: 0...1) : Double.random(in: 0..<1),
+//             generatorKind: generatorKind
+//         ) { (leftHeight: Double, rightHeight: Double) in
+//             if kind == .right {
+//                 return rightHeight * step
+//             } else if kind == .left {
+//                 return leftHeight * step
+//             } else {
+//                 // return Double(rightHeight + leftHeight) * step / 2.0
+//                 return (leftHeight + rightHeight) / 2.0 * step
+//             }
+//         } generate: { (leftBound: Double, rightBound: Double) in
+//             return (leftBound + rightBound) / 2.0
+//         }
+
+//         return result
+//     }
 }
 
 // public func integrate(
