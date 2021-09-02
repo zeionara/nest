@@ -58,7 +58,7 @@ public func random<InputType: Numeric, OutputType: Numeric>(
     return generatorKind == .floor ? generate(leftBoundary, nextLeftBoundary) : generate(firstValue, firstValue + step) // If wasn't able to generate earlier
 }
 
-public func random<Type: Numeric>(
+public func random_<Type: Numeric>(
     _ getProbability: (Type) -> Type,
     from firstValue: Type,
     to lastValue: Type,
@@ -76,34 +76,36 @@ public func random<Type: Numeric>(
     }
 }
 
-public func random(
-    _ getValue: (Double) -> Double,
-    from firstValue: Double,
-    to lastValue: Double,
-    precision nIntervals: Int = 10,
-    kind: IntegralKind = .right,
-    generatorKind: GeneratorKind = .ceil
-) -> Double {
-    let step = abs(lastValue - firstValue) / Double(nIntervals)
-    
-    let result = random(
-        getValue, from: firstValue, to: lastValue, step: step, zero: 0.0,
-        base: generatorKind == .ceil ? Double.random(in: 0...1) : Double.random(in: 0..<1),
-        generatorKind: generatorKind
-    ) { (leftHeight: Double, rightHeight: Double) in
-        if kind == .right {
-            return rightHeight * step
-        } else if kind == .left {
-            return leftHeight * step
-        } else {
-            // return Double(rightHeight + leftHeight) * step / 2.0
-            return (leftHeight + rightHeight) / 2.0 * step
+public extension Double {
+    static func random(
+        _ getValue: (Double) -> Double,
+        from firstValue: Double,
+        to lastValue: Double,
+        precision nIntervals: Int = 10,
+        kind: IntegralKind = .right,
+        generatorKind: GeneratorKind = .ceil
+    ) -> Double {
+        let step = abs(lastValue - firstValue) / Double(nIntervals)
+        
+        let result = random_(
+            getValue, from: firstValue, to: lastValue, step: step, zero: 0.0,
+            base: generatorKind == .ceil ? Double.random(in: 0...1) : Double.random(in: 0..<1),
+            generatorKind: generatorKind
+        ) { (leftHeight: Double, rightHeight: Double) in
+            if kind == .right {
+                return rightHeight * step
+            } else if kind == .left {
+                return leftHeight * step
+            } else {
+                // return Double(rightHeight + leftHeight) * step / 2.0
+                return (leftHeight + rightHeight) / 2.0 * step
+            }
+        } generate: { (leftBound: Double, rightBound: Double) in
+            return (leftBound + rightBound) / 2.0
         }
-    } generate: { (leftBound: Double, rightBound: Double) in
-        return (leftBound + rightBound) / 2.0
-    }
 
-    return result
+        return result
+    }
 }
 
 // public func integrate(
