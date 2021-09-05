@@ -36,22 +36,6 @@ public func concurrentMap<InputType, OutputType>(_ inputs: Array<InputType>, han
     return await externallyAvailableResults.items
 }
 
-public typealias Interval = (from: Double, to: Double)
-
-public func splitInterval(from firstValue: Double, to lastValue: Double, nParts: Int) -> Array<Interval> {
-    let step = (lastValue - firstValue) / Double(nParts)
-    var results = [Interval]()
-    var currentValue = firstValue
-
-    for _ in 0..<nParts {
-        let nextValue = currentValue + step
-        results.append(Interval(from: currentValue, to: nextValue))
-        currentValue = nextValue
-    }
-
-    return results
-}
-
 public func concurrentMap<InputType, OutputType>(_ inputs: Array<InputType>, handler: @escaping (InputType) async -> OutputType) async -> Array<OutputType> { // nWorkers: Int? = .none
     let externallyAvailableResults = SynchronisedCollection<OutputType>()
 

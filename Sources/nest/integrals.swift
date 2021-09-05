@@ -32,7 +32,7 @@ public func integrate<InputType: Numeric, OutputType: Numeric>(
     var rightHeight: OutputType? = .none
     repeat {
         if let rightHeightUnwrapped = rightHeight {
-            leftHeight = rightHeight
+            leftHeight = rightHeightUnwrapped
         } else {
             leftHeight = await getValue(leftBoundary)    
         }
@@ -50,7 +50,7 @@ public func integrate<InputType: Numeric, OutputType: Numeric>(
     return IntegrationResult(value: result, isPositive: !isInverseOrderBounds) // identity(lastValue - firstValue) * getValue(firstValue)
 }
 
-public func integrate<Type: Numeric>(
+public func integrated<Type: Numeric>(
     _ getValue: (Type) async -> Type,
     from firstValue: Type, to lastValue: Type, step: Type, zero: Type, computeSquare: (Type, Type) -> Type
 ) async -> IntegrationResult<Type> where Type: Comparable {
@@ -61,36 +61,14 @@ public func integrate<Type: Numeric>(
     }
 }
 
-public func integrate(
-    _ getValue: (Double) async -> Double,
-    from firstValue: Double, to lastValue: Double, precision nIntervals: Int = 10, kind: IntegralKind = .right
-) async -> Double {
-    let step = abs(lastValue - firstValue) / Double(nIntervals)
-    
-    let result = await integrate(
-        getValue, from: firstValue, to: lastValue, step: step, zero: 0.0
-    ) { (leftHeight: Double, rightHeight: Double) in
-        if kind == .right {
-            return rightHeight * step
-        } else if kind == .left {
-            return leftHeight * step
-        } else {
-            // return Double(rightHeight + leftHeight) * step / 2.0
-            return (leftHeight + rightHeight) / 2.0 * step
-        }
-    }
-
-    return result.isPositive ? result.value : -result.value
-}
-
-public func integrate(
-    _ getValue: @escaping (Double) async -> Double,
-    from firstValue: Double, to lastValue: Double, precision nIntervals: Int = 10, kind: IntegralKind = .right, nParts: Int
-) async -> Double {
+public func integrate<InputType: Integrable, OutputType: Numeric>(
+    _ getValue: @escaping (InputType) async -> OutputType,
+    from firstValue: InputType, to lastValue: InputType, precision nIntervals: Int = 10, kind: IntegralKind = .right, nParts: Int
+) async -> OutputType where InputType.IntervalValueType == InputType, InputType.ResultType == OutputType {
     let results = await concurrentMap(
-        splitInterval(from: firstValue, to: lastValue, nParts: nParts)
-    ) { interval async -> Double in
-        let result = await integrate( getValue,
+        InputType.splitInterval(from: firstValue, to: lastValue, nParts: nParts)
+    ) { interval async -> OutputType in
+        let result = await InputType.integrate( getValue,
             from: interval.from,
             to: interval.to,
             precision: nIntervals / nParts + 1,
@@ -102,16 +80,16 @@ public func integrate(
     return results.reduce(0, +)
 }
 
-public func integrate(
-    _ getValue: ([Double]) -> Double,
-    from firstValue: [Double], to lastValue: [Double], precision nIntervals: Int = 10, kind: IntegralKind = .right
-) async -> Double {
+public func integrate<InputType: Integrable, OutputType: Numeric>(
+    _ getValue: ([InputType]) -> OutputType,
+    from firstValue: [InputType], to lastValue: [InputType], precision nIntervals: Int = 10, kind: IntegralKind = .right
+) async -> OutputType where InputType.IntervalValueType == InputType, InputType.ResultType == OutputType {
     if firstValue.count == 1 {
-        func getValueFixed(_ x: Double) -> Double {
+        func getValueFixed(_ x: InputType) -> OutputType {
             return getValue([x])
         }
         
-        return await integrate(
+        return await InputType.integrate(
             getValueFixed,
             from: firstValue.first!,
             to: lastValue.first!,
@@ -120,8 +98,8 @@ public func integrate(
         )
     }
 
-    func getValueFixed(_ firstDimensionValue: Double) async -> Double {
-        func getValueOnShortenedArray(_ lastDimensionValues: [Double]) -> Double {
+    func getValueFixed(_ firstDimensionValue: InputType) async -> OutputType {
+        func getValueOnShortenedArray(_ lastDimensionValues: [InputType]) -> OutputType {
             return getValue([firstDimensionValue] + lastDimensionValues)
         }
         
@@ -134,7 +112,7 @@ public func integrate(
         )
     }
     
-    return await integrate(
+    return await InputType.integrate(
         getValueFixed,
         from: firstValue.first!,
         to: lastValue.first!,
@@ -143,12 +121,12 @@ public func integrate(
     )
 }
 
-public func integrate(
-    _ getValue: @escaping ([Double]) -> Double,
-    from firstValue: [Double], to lastValue: [Double], precision nIntervals: Int = 10, kind: IntegralKind = .right, nParts: Int
-) async -> Double {
+public func integrate<InputType: Integrable, OutputType: Numeric>(
+    _ getValue: @escaping ([InputType]) -> OutputType,
+    from firstValue: [InputType], to lastValue: [InputType], precision nIntervals: Int = 10, kind: IntegralKind = .right, nParts: Int
+) async -> OutputType where InputType.IntervalValueType == InputType, InputType.ResultType == OutputType {
     if firstValue.count == 1 {
-        func getValueFixed(_ x: Double) -> Double {
+        func getValueFixed(_ x: InputType) -> OutputType {
             return getValue([x])
         }
         
@@ -162,8 +140,8 @@ public func integrate(
         )
     }
 
-    func getValueFixed(_ firstDimensionValue: Double) async -> Double {
-        func getValueOnShortenedArray(_ lastDimensionValues: [Double]) -> Double {
+    func getValueFixed(_ firstDimensionValue: InputType) async -> OutputType {
+        func getValueOnShortenedArray(_ lastDimensionValues: [InputType]) -> OutputType {
             return getValue([firstDimensionValue] + lastDimensionValues)
         }
         
