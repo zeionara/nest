@@ -19,4 +19,8 @@ extension Double: Randomizable {
 
         return result
     }
+
+    public static func normalizeProbability(_ probability: Self, _ normalizationCoefficient: Self) -> Self {
+        return probability / normalizationCoefficient
+    }
 }

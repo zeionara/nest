@@ -14,6 +14,7 @@ public protocol Randomizable {
         _ getValue: (SampledValueType) async -> ProbabilityType, from firstValue: SampledValueType, to lastValue: SampledValueType, precision nIntervals: Int,
         kind: IntegralKind, generatorKind: GeneratorKind
     ) async -> SampledValueType
+    static func normalizeProbability(_ probability: ProbabilityType, _ normalizationCoefficient: ProbabilityType) -> ProbabilityType
 }
 
 public func random<InputType: Numeric, OutputType: Numeric>(
@@ -210,7 +211,7 @@ public func randomizeCoordinate<InputType: Randomizable, OutputType: Numeric>(
 }
 
 public func randomize<InputType: Randomizable, OutputType: Numeric>(
-    _ getProbability: ([InputType]) -> OutputType, normalizeProbability: (_ probability: OutputType, _ normalizationCoefficient: OutputType) -> OutputType,
+    _ getProbability: ([InputType]) -> OutputType,
     from firstValue: [InputType], to lastValue: [InputType], precision nIntervals: Int = 10, kind: IntegralKind = .right, generatorKind: GeneratorKind = .ceil
 ) async -> [InputType] where InputType: Integrable, InputType.IntervalValueType == InputType, InputType.ResultType == OutputType,
     InputType == InputType.SampledValueType, OutputType == InputType.ProbabilityType {
@@ -230,7 +231,7 @@ public func randomize<InputType: Randomizable, OutputType: Numeric>(
 
         let newCoordinate = await randomizeCoordinate(
             { args in 
-                return normalizeProbability(
+                return InputType.normalizeProbability(
                     getValueFixed(args),
                     normalizationCoefficient
                 )
@@ -270,4 +271,55 @@ public func randomize<InputType: Randomizable, OutputType: Numeric>(
     //     kind: kind,
     //     generatorKind: generatorKind
     // )
+}
+
+public func sample<InputType: Randomizable, OutputType: Numeric>(
+    _ getProbability: @escaping ([InputType]) -> OutputType, _ nSamples: Int,
+    from: [InputType], to: [InputType], precision: Int = 10000, kind: IntegralKind = .right, generatorKind: GeneratorKind = .ceil
+) async -> [[InputType]] where InputType: Integrable, InputType.IntervalValueType == InputType, InputType.ResultType == OutputType,
+    InputType == InputType.SampledValueType, OutputType == InputType.ProbabilityType {
+    var result = [[InputType]]()
+    for i in 0..<nSamples {
+        print("Generated \(i) / \(nSamples) samples")
+        result.append(
+            await randomize(
+                getProbability,
+                from: from,
+                to: to,
+                precision: precision,
+                kind: kind,
+                generatorKind: generatorKind
+            )
+        )
+    }
+    return result
+}
+
+public func sample<InputType: Randomizable, OutputType: Numeric>(
+    _ getProbability: @escaping ([InputType]) -> OutputType, _ nSamples: Int, nParts: Int,
+    from: [InputType], to: [InputType], precision: Int = 10000, kind: IntegralKind = .right, generatorKind: GeneratorKind = .ceil
+) async -> [[InputType]] where InputType: Integrable, InputType.IntervalValueType == InputType, InputType.ResultType == OutputType,
+    InputType == InputType.SampledValueType, OutputType == InputType.ProbabilityType {
+    assert(nParts > 1)
+    
+    var inputs = [Int]()
+    let nSamplesPerPart = nSamples / nParts
+    for _ in 0..<nParts - 1 {
+        inputs.append(nSamplesPerPart)
+    }
+    inputs.append(nSamplesPerPart + (nSamples - nSamplesPerPart * nParts))
+
+    return Array.chain(
+        await concurrentMap(
+            inputs
+        ) { (nSamples: Int) in
+            await sample(
+                getProbability,
+                nSamples,
+                from: from,
+                to: to,
+                precision: precision
+            )
+        }
+    )
 }
