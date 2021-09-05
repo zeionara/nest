@@ -54,3 +54,17 @@ public func concurrentMap<InputType, OutputType>(_ inputs: Array<InputType>, han
 
     return await externallyAvailableResults.items
 }
+
+public extension Array {
+    static func chain(_ arrays: [[Element]]) -> [Element] {
+        var chained = [Element]()
+        
+        for array in arrays {
+            for item in array {
+                chained.append(item)
+            }
+        }
+
+        return chained
+    }
+}
