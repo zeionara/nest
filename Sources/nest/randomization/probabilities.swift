@@ -9,15 +9,15 @@ public protocol Randomizable {
     associatedtype SampledValueType
     associatedtype ProbabilityType
 
-    static func splitInterval(from firstValue: SampledValueType, to lastValue: SampledValueType, nParts: Int) -> Array<Interval<SampledValueType>>
+    // static func splitInterval(from firstValue: SampledValueType, to lastValue: SampledValueType, nParts: Int) -> Array<Interval<SampledValueType>>
     static func random(
-        _ getValue: (SampledValueType) -> ProbabilityType, from firstValue: SampledValueType, to lastValue: SampledValueType, precision nIntervals: Int,
+        _ getValue: (SampledValueType) async -> ProbabilityType, from firstValue: SampledValueType, to lastValue: SampledValueType, precision nIntervals: Int,
         kind: IntegralKind, generatorKind: GeneratorKind
     ) async -> SampledValueType
 }
 
 public func random<InputType: Numeric, OutputType: Numeric>(
-    _ getProbability: (InputType) -> OutputType,
+    _ getProbability: (InputType) async -> OutputType,
     from firstValue: InputType,
     to lastValue: InputType,
     step: InputType,
@@ -27,7 +27,7 @@ public func random<InputType: Numeric, OutputType: Numeric>(
     base baseValue: InputType,
     generatorKind: GeneratorKind,
     identity: (InputType) -> OutputType
-) -> InputType where InputType: Comparable, OutputType: Comparable {
+) async -> InputType where InputType: Comparable, OutputType: Comparable {
     var leftBoundary = firstValue
     var nextLeftBoundary = leftBoundary
     var rightBoundary = lastValue
@@ -43,9 +43,13 @@ public func random<InputType: Numeric, OutputType: Numeric>(
 
     repeat {
         leftBoundary = nextLeftBoundary
-        leftHeight = rightHeight ?? getProbability(leftBoundary)
+        if let rightHeightUnwrapped = rightHeight {
+            leftHeight = rightHeightUnwrapped
+        } else {
+            leftHeight = await getProbability(leftBoundary)
+        }
         nextLeftBoundary = leftBoundary + step
-        rightHeight = getProbability(nextLeftBoundary)
+        rightHeight = await getProbability(nextLeftBoundary)
 
         let nextTotalProbability = totalProbability + computeSquare(leftHeight!, rightHeight!)
         
@@ -63,7 +67,7 @@ public func random<InputType: Numeric, OutputType: Numeric>(
 }
 
 public func _random<Type: Numeric>(
-    _ getProbability: (Type) -> Type,
+    _ getProbability: (Type) async -> Type,
     from firstValue: Type,
     to lastValue: Type,
     step: Type,
@@ -72,8 +76,8 @@ public func _random<Type: Numeric>(
     generatorKind: GeneratorKind,
     computeSquare: (Type, Type) -> Type,
     generate: (Type, Type) -> Type
-) -> Type where Type: Comparable {
-    return random(
+) async -> Type where Type: Comparable {
+    return await random(
         getProbability, from: firstValue, to: lastValue, step: step, zero: zero, computeSquare: computeSquare, generate: generate, base: base, generatorKind: generatorKind
     ) {
         $0
@@ -116,30 +120,154 @@ public func sample<InputType: Randomizable, OutputType: Numeric>(
         await concurrentMap(
             inputs
         ) { (nSamples: Int) in
-            var result = [InputType]()
-            for _ in 0...nSamples {
-                result.append(
-                    await InputType.random(
-                        getProbability,
-                        from: from,
-                        to: to,
-                        precision: precision,
-                        kind: kind,
-                        generatorKind: generatorKind
-                    )
-                )
-            }
-            return result
-            // (0..<nSamples).map{x in
-            //     return await InputType.random(
-            //         getProbability,
-            //         from: from,
-            //         to: to,
-            //         precision: precision,
-            //         kind: kind,
-            //         generatorKind: generatorKind
+            await sample(
+                getProbability,
+                nSamples,
+                from: from,
+                to: to,
+                precision: precision
+            )
+            // var result = [InputType]()
+            // for _ in 0...nSamples {
+            //     result.append(
+            //         await InputType.random(
+            //             getProbability,
+            //             from: from,
+            //             to: to,
+            //             precision: precision,
+            //             kind: kind,
+            //             generatorKind: generatorKind
+            //         )
             //     )
             // }
+            // return result
         }
     )
+}
+
+public func sample<InputType: Randomizable, OutputType: Numeric>(
+    _ getProbability: @escaping (InputType) -> OutputType, _ nSamples: Int,
+    from: InputType, to: InputType, precision: Int = 10000, kind: IntegralKind = .right, generatorKind: GeneratorKind = .ceil
+) async -> [InputType] where InputType == InputType.SampledValueType, OutputType == InputType.ProbabilityType {
+    var result = [InputType]()
+    for _ in 0...nSamples {
+        result.append(
+            await InputType.random(
+                getProbability,
+                from: from,
+                to: to,
+                precision: precision,
+                kind: kind,
+                generatorKind: generatorKind
+            )
+        )
+    }
+    return result
+}
+
+public func randomizeCoordinate<InputType: Randomizable, OutputType: Numeric>(
+    _ getProbability: ([InputType]) -> OutputType,
+    from firstValue: [InputType], to lastValue: [InputType], precision nIntervals: Int = 10, kind: IntegralKind = .right, generatorKind: GeneratorKind = .ceil
+) async -> InputType where InputType: Integrable, InputType.IntervalValueType == InputType, InputType.ResultType == OutputType,
+    InputType == InputType.SampledValueType, OutputType == InputType.ProbabilityType {
+    if firstValue.count == 1 {
+        func getValueFixed(_ x: InputType) -> OutputType {
+            return getProbability([x])
+        }
+
+        return await InputType.random(
+            getValueFixed,
+            from: firstValue.first!,
+            to: lastValue.first!,
+            precision: nIntervals,
+            kind: kind,
+            generatorKind: generatorKind
+        )
+    } else {
+        func getValueFixed(_ firstDimensionValue: InputType) async -> OutputType {
+            func getValueOnShortenedArray(_ lastDimensionValues: [InputType]) -> OutputType {
+                return getProbability([firstDimensionValue] + lastDimensionValues)
+            }
+            
+            return await integrate(
+                getValueOnShortenedArray,
+                from: Array(firstValue.dropFirst()),
+                to: Array(lastValue.dropFirst()),
+                precision: nIntervals,
+                kind: kind
+            )
+        }
+        
+        return await InputType.random(
+            getValueFixed,
+            from: firstValue.first!,
+            to: lastValue.first!,
+            precision: nIntervals,
+            kind: kind,
+            generatorKind: generatorKind
+        )
+    }
+}
+
+public func randomize<InputType: Randomizable, OutputType: Numeric>(
+    _ getProbability: ([InputType]) -> OutputType, normalizeProbability: (_ probability: OutputType, _ normalizationCoefficient: OutputType) -> OutputType,
+    from firstValue: [InputType], to lastValue: [InputType], precision nIntervals: Int = 10, kind: IntegralKind = .right, generatorKind: GeneratorKind = .ceil
+) async -> [InputType] where InputType: Integrable, InputType.IntervalValueType == InputType, InputType.ResultType == OutputType,
+    InputType == InputType.SampledValueType, OutputType == InputType.ProbabilityType {
+    var currentCoordinates = [InputType]()
+    for i in 0..<firstValue.count {
+        func getValueFixed(_ args: [InputType]) -> OutputType {
+            return getProbability(currentCoordinates + args)
+        }
+
+        let normalizationCoefficient = await integrate(
+            getValueFixed,
+            from: Array(firstValue[i..<firstValue.count]),
+            to: Array(lastValue[i..<firstValue.count]),
+            precision: nIntervals,
+            kind: kind
+        )
+
+        let newCoordinate = await randomizeCoordinate(
+            { args in 
+                return normalizeProbability(
+                    getValueFixed(args),
+                    normalizationCoefficient
+                )
+            },
+            from: Array(firstValue[i..<firstValue.count]),
+            to: Array(lastValue[i..<firstValue.count]),
+            precision: nIntervals,
+            kind: kind,
+            generatorKind: generatorKind
+        )
+
+        currentCoordinates.append(newCoordinate)
+    }
+
+    return currentCoordinates
+    
+    // InputType == InputType.SampledValueType, OutputType == InputType.ProbabilityType {
+    // func getValueFixed(_ firstDimensionValue: InputType) async -> OutputType {
+    //     func getValueOnShortenedArray(_ lastDimensionValues: [InputType]) -> OutputType {
+    //         return getProbability([firstDimensionValue] + lastDimensionValues)
+    //     }
+        
+    //     return await integrate(
+    //         getValueOnShortenedArray,
+    //         from: Array(firstValue.dropFirst()),
+    //         to: Array(lastValue.dropFirst()),
+    //         precision: nIntervals,
+    //         kind: kind
+    //     )
+    // }
+    
+    // return await InputType.random(
+    //     getValueFixed,
+    //     from: firstValue.first!,
+    //     to: lastValue.first!,
+    //     precision: nIntervals,
+    //     kind: kind,
+    //     generatorKind: generatorKind
+    // )
 }
