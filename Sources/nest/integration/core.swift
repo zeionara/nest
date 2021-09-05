@@ -8,6 +8,19 @@ public enum IntegralKind {
 
 public typealias IntegrationResult<ValueType> = (value: ValueType, isPositive: Bool)
 
+public typealias Interval<Value> = (from: Value, to: Value)
+
+public protocol Integrable {
+    associatedtype IntervalValueType
+    associatedtype ResultType
+
+    static func splitInterval(from firstValue: IntervalValueType, to lastValue: IntervalValueType, nParts: Int) -> Array<Interval<IntervalValueType>>
+    static func integrate(
+        _ getValue: (IntervalValueType) async -> ResultType,
+        from firstValue: IntervalValueType, to lastValue: IntervalValueType, precision nIntervals: Int, kind: IntegralKind
+    ) async -> ResultType
+}
+
 public func integrate<InputType: Numeric, OutputType: Numeric>(
     _ getValue: (InputType) async -> OutputType,
     from firstValue: InputType, to lastValue: InputType,
@@ -50,7 +63,7 @@ public func integrate<InputType: Numeric, OutputType: Numeric>(
     return IntegrationResult(value: result, isPositive: !isInverseOrderBounds) // identity(lastValue - firstValue) * getValue(firstValue)
 }
 
-public func integrated<Type: Numeric>(
+public func _integrate<Type: Numeric>(
     _ getValue: (Type) async -> Type,
     from firstValue: Type, to lastValue: Type, step: Type, zero: Type, computeSquare: (Type, Type) -> Type
 ) async -> IntegrationResult<Type> where Type: Comparable {
