@@ -1,4 +1,5 @@
 import Foundation
+import PcgRandom
 
 public enum GeneratorKind {
     case ceil
@@ -10,9 +11,9 @@ public protocol Randomizable {
     associatedtype ProbabilityType
 
     // static func splitInterval(from firstValue: SampledValueType, to lastValue: SampledValueType, nParts: Int) -> Array<Interval<SampledValueType>>
-    static func random<GeneratorType: RandomNumberGenerator>(
+    static func random(
         _ getValue: (SampledValueType) async -> ProbabilityType, from firstValue: SampledValueType, to lastValue: SampledValueType, precision nIntervals: Int,
-        kind: IntegralKind, generatorKind: GeneratorKind, generator: GeneratorType?, seed: Int?
+        kind: IntegralKind, generatorKind: GeneratorKind, generator: inout Pcg64Random
     ) async -> SampledValueType
     static func normalizeProbability(_ probability: ProbabilityType, _ normalizationCoefficient: ProbabilityType) -> ProbabilityType
 }
@@ -104,10 +105,10 @@ public func _random<Type: Numeric>(
 //     return results.reduce(0, +)
 // }
 
-public func sample<InputType: Randomizable, OutputType: Numeric, GeneratorType: RandomNumberGenerator>(
+public func sample<InputType: Randomizable, OutputType: Numeric>(
     _ getProbability: @escaping (InputType) -> OutputType, _ nSamples: Int, nParts: Int,
     from: InputType, to: InputType, precision: Int = 10000, kind: IntegralKind = .right, generatorKind: GeneratorKind = .ceil,
-    generator: GeneratorType? = nil, seed: Int? = nil
+    seed: Int
 ) async -> [InputType] where InputType == InputType.SampledValueType, OutputType == InputType.ProbabilityType {
     assert(nParts > 1)
     
@@ -120,16 +121,16 @@ public func sample<InputType: Randomizable, OutputType: Numeric, GeneratorType: 
 
     return Array.chain(
         await concurrentMap(
-            inputs
-        ) { (nSamples: Int) in
-            await sample(
+            Array(inputs.enumerated())
+        ) { (i: Int, nSamples: Int) in
+            var generator = Pcg64Random(seed: UInt64(seed + i))
+            return await sample(
                 getProbability,
                 nSamples,
                 from: from,
                 to: to,
                 precision: precision,
-                generator: generator,
-                seed: seed
+                generator: &generator
             )
             // var result = [InputType]()
             // for _ in 0...nSamples {
@@ -149,10 +150,10 @@ public func sample<InputType: Randomizable, OutputType: Numeric, GeneratorType: 
     )
 }
 
-public func sample<InputType: Randomizable, OutputType: Numeric, GeneratorType: RandomNumberGenerator>(
+public func sample<InputType: Randomizable, OutputType: Numeric>(
     _ getProbability: @escaping (InputType) -> OutputType, _ nSamples: Int,
     from: InputType, to: InputType, precision: Int = 10000, kind: IntegralKind = .right, generatorKind: GeneratorKind = .ceil,
-    generator: GeneratorType? = nil, seed: Int? = nil
+    generator: inout Pcg64Random
 ) async -> [InputType] where InputType == InputType.SampledValueType, OutputType == InputType.ProbabilityType {
     var result = [InputType]()
     for _ in 0...nSamples {
@@ -164,18 +165,17 @@ public func sample<InputType: Randomizable, OutputType: Numeric, GeneratorType: 
                 precision: precision,
                 kind: kind,
                 generatorKind: generatorKind,
-                generator: generator,
-                seed: seed
+                generator: &generator
             )
         )
     }
     return result
 }
 
-public func randomizeCoordinate<InputType: Randomizable, OutputType: Numeric, GeneratorType: RandomNumberGenerator>(
+public func randomizeCoordinate<InputType: Randomizable, OutputType: Numeric>(
     _ getProbability: ([InputType]) -> OutputType,
     from firstValue: [InputType], to lastValue: [InputType], precision nIntervals: Int = 10, kind: IntegralKind = .right, generatorKind: GeneratorKind = .ceil,
-    generator: GeneratorType? = nil, seed: Int? = nil
+    generator: inout Pcg64Random
 ) async -> InputType where InputType: Integrable, InputType.IntervalValueType == InputType, InputType.ResultType == OutputType,
     InputType == InputType.SampledValueType, OutputType == InputType.ProbabilityType {
     if firstValue.count == 1 {
@@ -190,8 +190,7 @@ public func randomizeCoordinate<InputType: Randomizable, OutputType: Numeric, Ge
             precision: nIntervals,
             kind: kind,
             generatorKind: generatorKind,
-            generator: generator,
-            seed: seed
+            generator: &generator
         )
     } else {
         func getValueFixed(_ firstDimensionValue: InputType) async -> OutputType {
@@ -215,16 +214,15 @@ public func randomizeCoordinate<InputType: Randomizable, OutputType: Numeric, Ge
             precision: nIntervals,
             kind: kind,
             generatorKind: generatorKind,
-            generator: generator,
-            seed: seed
+            generator: &generator
         )
     }
 }
 
-public func randomize<InputType: Randomizable, OutputType: Numeric, GeneratorType: RandomNumberGenerator>(
+public func randomize<InputType: Randomizable, OutputType: Numeric>(
     _ getProbability: ([InputType]) -> OutputType,
     from firstValue: [InputType], to lastValue: [InputType], precision nIntervals: Int = 10, kind: IntegralKind = .right, generatorKind: GeneratorKind = .ceil,
-    generator: GeneratorType? = nil, seed: Int? = nil
+    generator: inout Pcg64Random
 ) async -> [InputType] where InputType: Integrable, InputType.IntervalValueType == InputType, InputType.ResultType == OutputType,
     InputType == InputType.SampledValueType, OutputType == InputType.ProbabilityType {
     var currentCoordinates = [InputType]()
@@ -253,8 +251,7 @@ public func randomize<InputType: Randomizable, OutputType: Numeric, GeneratorTyp
             precision: nIntervals,
             kind: kind,
             generatorKind: generatorKind,
-            generator: generator,
-            seed: seed
+            generator: &generator
         )
 
         currentCoordinates.append(newCoordinate)
@@ -287,10 +284,10 @@ public func randomize<InputType: Randomizable, OutputType: Numeric, GeneratorTyp
     // )
 }
 
-public func sample<InputType: Randomizable, OutputType: Numeric, GeneratorType: RandomNumberGenerator>(
+public func sample<InputType: Randomizable, OutputType: Numeric>(
     _ getProbability: @escaping ([InputType]) -> OutputType, _ nSamples: Int,
     from: [InputType], to: [InputType], precision: Int = 10000, kind: IntegralKind = .right, generatorKind: GeneratorKind = .ceil,
-    generator: GeneratorType? = nil, seed: Int? = nil
+    generator: inout Pcg64Random
 ) async -> [[InputType]] where InputType: Integrable, InputType.IntervalValueType == InputType, InputType.ResultType == OutputType,
     InputType == InputType.SampledValueType, OutputType == InputType.ProbabilityType {
     var result = [[InputType]]()
@@ -304,18 +301,17 @@ public func sample<InputType: Randomizable, OutputType: Numeric, GeneratorType: 
                 precision: precision,
                 kind: kind,
                 generatorKind: generatorKind,
-                generator: generator,
-                seed: seed
+                generator: &generator
             )
         )
     }
     return result
 }
 
-public func sample<InputType: Randomizable, OutputType: Numeric, GeneratorType: RandomNumberGenerator>(
+public func sample<InputType: Randomizable, OutputType: Numeric>(
     _ getProbability: @escaping ([InputType]) -> OutputType, _ nSamples: Int, nParts: Int,
     from: [InputType], to: [InputType], precision: Int = 10000, kind: IntegralKind = .right, generatorKind: GeneratorKind = .ceil,
-    generator: GeneratorType? = nil, seed: Int? = nil
+    seed: Int
 ) async -> [[InputType]] where InputType: Integrable, InputType.IntervalValueType == InputType, InputType.ResultType == OutputType,
     InputType == InputType.SampledValueType, OutputType == InputType.ProbabilityType {
     assert(nParts > 1)
@@ -329,16 +325,16 @@ public func sample<InputType: Randomizable, OutputType: Numeric, GeneratorType: 
 
     return Array.chain(
         await concurrentMap(
-            inputs
-        ) { (nSamples: Int) in
-            await sample(
+            Array(inputs.enumerated())
+        ) { (i: Int, nSamples: Int) in
+            var generator = Pcg64Random(seed: UInt64(seed + i))
+            return await sample(
                 getProbability,
                 nSamples,
                 from: from,
                 to: to,
                 precision: precision,
-                generator: generator,
-                seed: seed
+                generator: &generator
             )
         }
     )
