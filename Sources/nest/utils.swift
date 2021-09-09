@@ -1,5 +1,5 @@
 import Foundation
-// import PcgRandom
+import PcgRandom
 
 
 extension DispatchGroup {
@@ -111,3 +111,5 @@ public extension Array {
 //     }
 //     return nil
 // }
+
+public let defaultNullGenerator: Pcg64Random? = nil
