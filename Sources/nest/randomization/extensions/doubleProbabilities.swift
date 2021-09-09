@@ -1,5 +1,7 @@
+import PcgRandom
+
 extension Double: Randomizable {
-    public static func random(
+    public static func random_(
         _ getValue: (Double) async -> Double,
         from firstValue: Double,
         to lastValue: Double,
@@ -22,5 +24,37 @@ extension Double: Randomizable {
 
     public static func normalizeProbability(_ probability: Self, _ normalizationCoefficient: Self) -> Self {
         return probability / normalizationCoefficient
+    }
+}
+
+extension Double {
+    public static func random<GeneratorType>(
+        _ getValue: (Double) async -> Double,
+        from firstValue: Double,
+        to lastValue: Double,
+        precision nIntervals: Int = 10,
+        kind: IntegralKind = .right,
+        generatorKind: GeneratorKind = .ceil,
+        generator: GeneratorType? = nil,
+        seed: Int? = nil
+    ) async -> Double where GeneratorType: RandomNumberGenerator {
+        let step = abs(lastValue - firstValue) / Double(nIntervals)
+        
+        if var unwrappedGenerator = generator {
+            let result = await _random(
+                getValue, from: firstValue, to: lastValue, step: step, zero: 0.0,
+                base: generatorKind == .ceil ? Double.random(in: 0...1, using: &unwrappedGenerator) : Double.random(in: 0..<1, using: &unwrappedGenerator), 
+                generatorKind: generatorKind, computeSquare: makeIntegratingClosure(step: step, kind: kind)
+            ) { (leftBound: Double, rightBound: Double) in
+                return (leftBound + rightBound) / 2.0
+            }
+            return result
+        }
+        if let unwrappedSeed = seed {
+            print("Passing seed without a generator. Using Pcg64Random as a default generator")
+            let defaultGenerator = Pcg64Random(seed: UInt64(unwrappedSeed))
+            return await random(getValue, from: firstValue, to: lastValue, precision: nIntervals, kind: kind, generatorKind: generatorKind, generator: defaultGenerator)
+        }
+        return await random_(getValue, from: firstValue, to: lastValue, precision: nIntervals, kind: kind, generatorKind: generatorKind)
     }
 }

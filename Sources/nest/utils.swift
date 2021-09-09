@@ -1,4 +1,6 @@
 import Foundation
+// import PcgRandom
+
 
 extension DispatchGroup {
     public func enter(_ nWorkers: Int) {
@@ -68,3 +70,44 @@ public extension Array {
         return chained
     }
 }
+
+
+// public func tryInitializeGenerator<InputGeneratorType: RandomNumberGenerator>(
+//     _ generator: InputGeneratorType? = nil, seed: Int? = nil
+// ) -> RandomNumberGenerator? {
+//     if let _ = generator {
+//         return generator
+//     }
+//     if let unwrappedSeed = seed {
+//         return Pcg64Random(seed: UInt64(unwrappedSeed))
+//     }
+//     return nil
+// }
+
+// public func tryInitializeGenerator<InputGeneratorType: RandomNumberGenerator>(
+//     _ generator: InputGeneratorType? = nil, seed: Int? = nil
+// ) -> RandomNumberGenerator? {
+//     if let _ = generator {
+//         return generator
+//     }
+//     if let unwrappedSeed = seed {
+//         return Pcg64Random(seed: UInt64(unwrappedSeed))
+//     }
+//     return nil
+// }
+
+// public struct GeneratorWrapper<GeneratorType: RandomNumberGenerator> {
+//     public let generator: GeneratorType
+// }
+
+// public func tryInitializeGenerator<InputGeneratorType: RandomNumberGenerator>(
+//     _ generator: InputGeneratorType? = nil, seed: Int? = nil
+// ) -> GeneratorWrapper? {
+//     if let _ = generator {
+//         return GeneratorWrapper(generator: generator)
+//     }
+//     if let unwrappedSeed = seed {
+//         return GeneratorWrapper(generator: Pcg64Random(seed: UInt64(unwrappedSeed)))
+//     }
+//     return nil
+// }
