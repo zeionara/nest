@@ -1,15 +1,27 @@
 import PcgRandom
 
 public protocol SeedableRandomNumberGenerator: RandomNumberGenerator {
-    static func fromSeed(_ seed: Int) -> Self
+    init (_ seed: Int)
 }
 
-extension Pcg64Random: SeedableRandomNumberGenerator {
-    public static func fromSeed(_ seed: Int) -> Self {
-        return Pcg64Random(seed: UInt64(seed)) as! Self
+// extension Pcg64Random: SeedableRandomNumberGenerator {
+//     public static func fromSeed(_ seed: Int) -> SeedableRandomNumberGenerator {
+//         return Pcg64Random(seed: UInt64(seed))
+//     }
+// }
+
+// public func makeDefaultSeedableRandomNumberGenerator<GeneratorType: SeedableRandomNumberGenerator>(_ seed: Int) -> GeneratorType {
+//     return DefaultSeedableRandomNumberGenerator(seed)
+// }
+
+public class DefaultSeedableRandomNumberGenerator: SeedableRandomNumberGenerator {
+    private var generator: Pcg64Random
+    
+    public required init(_ seed: Int) {
+        generator = Pcg64Random(seed: UInt64(seed))
+    }
+
+    public func next() -> UInt64 {
+        return generator.next()
     }
 }
-
-// public func makeDefaultSeedableRandomNumberGenerator(_ seed: Int) -> SeedableRandomNumberGenerator {
-//     return Pcg64Random(seed)
-// }

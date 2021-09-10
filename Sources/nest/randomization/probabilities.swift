@@ -15,6 +15,10 @@ public protocol Randomizable {
         _ getValue: (SampledValueType) async -> ProbabilityType, from firstValue: SampledValueType, to lastValue: SampledValueType, precision nIntervals: Int,
         kind: IntegralKind, generatorKind: GeneratorKind, generator: inout GeneratorType
     ) async -> SampledValueType
+        static func random(
+        _ getValue: (SampledValueType) async -> ProbabilityType, from firstValue: SampledValueType, to lastValue: SampledValueType, precision nIntervals: Int,
+        kind: IntegralKind, generatorKind: GeneratorKind
+    ) async -> SampledValueType
     static func normalizeProbability(_ probability: ProbabilityType, _ normalizationCoefficient: ProbabilityType) -> ProbabilityType
 }
 
