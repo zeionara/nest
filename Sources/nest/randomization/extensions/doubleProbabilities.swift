@@ -30,14 +30,14 @@ extension Double: Randomizable {
 }
 
 extension Double {
-    public static func random(
+    public static func random<GeneratorType: RandomNumberGenerator>(
         _ getValue: (Double) async -> Double,
         from firstValue: Double,
         to lastValue: Double,
         precision nIntervals: Int = 10,
         kind: IntegralKind = .right,
         generatorKind: GeneratorKind = .ceil,
-        generator: inout Pcg64Random
+        generator: inout GeneratorType
     ) async -> Double {
         let step = abs(lastValue - firstValue) / Double(nIntervals)
         
