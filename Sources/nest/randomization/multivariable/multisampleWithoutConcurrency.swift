@@ -1,3 +1,16 @@
+// public func sample<InputType: Randomizable, OutputType: Numeric>(
+//     _ nSamples: Int, generateRandomValues: @escaping () async -> [InputType] 
+// ) async -> [[InputType]] where InputType: Integrable, InputType.IntervalValueType == InputType, InputType.ResultType == OutputType,
+//     InputType == InputType.SampledValueType, OutputType == InputType.ProbabilityType {
+//     var result = [[InputType]]()
+//     for _ in 0..<nSamples { // This loop cannot be rewritten as an array generator because of concurrency
+//         result.append(
+//             await generateRandomValues()
+//         )
+//     }
+//     return result
+// }
+
 public func sample<InputType: Randomizable, OutputType: Numeric, GeneratorType: SeedableRandomNumberGenerator>(
     _ getProbability: @escaping ([InputType]) -> OutputType, _ nSamples: Int,
     from: [InputType], to: [InputType], precision: Int = 10000, kind: IntegralKind = .right, generatorKind: GeneratorKind = .ceil,
