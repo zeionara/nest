@@ -113,3 +113,15 @@ public extension Array {
 // }
 
 public let defaultNullGenerator: Pcg64Random? = nil
+
+internal func BlockingTask(apply closure: @escaping () async -> Void) -> Void {
+    let group = DispatchGroup()
+    group.enter(1)
+
+    Task {
+        await closure()
+        group.leave()
+    }
+
+    group.wait()
+}
